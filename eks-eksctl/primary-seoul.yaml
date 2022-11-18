@@ -1,0 +1,24 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+metadata:
+  name: cicd-dr-primary-seoul
+  region: ap-northeast-2
+managedNodeGroups:
+  - name: manage
+    instanceType: t3.medium
+    desiredCapacity: 2
+    privateNetworking: true
+    ssh:
+      publicKeyName: ssupp-seoul
+  - name: web-server
+    instanceType: t3.medium
+    desiredCapacity: 6
+    privateNetworking: true
+    ssh:
+      publicKeyName: ssupp-seoul
+  - name: app-server
+    instanceType: t3.medium
+    desiredCapacity: 6
+    privateNetworking: true
+    ssh:
+      publicKeyName: ssupp-seoul
