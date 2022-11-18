@@ -13,7 +13,7 @@ $ eksctl create cluster -f secondary-osaka.yaml
 ## FIS 
 
 * Create IAM role for FIS
-  * Reference : https://docs.aws.amazon.com/fis/latest/userguide/getting-started-iam-service-role.html#create-iam-role
+  * Ref : https://docs.aws.amazon.com/fis/latest/userguide/getting-started-iam-service-role.html#create-iam-role
 
 ```
 $ cd fis-iam
