@@ -1,0 +1,220 @@
+analytics:
+  disable: true
+
+communications:
+  'default-group':
+    slack: # Configuration for the Slack app with RTM support
+      enabled: false # Tests will override this temporarily
+      token: "" # Provide a valid token for Botkube app
+      channels:
+        'default':
+          name: "" # Tests will override this temporarily
+          bindings:
+            executors:
+              - kubectl-read-only
+              - kubectl-wait-cmd
+              - kubectl-exec-cmd
+              - kubectl-allow-all
+              - plugin-based
+            sources:
+              - k8s-events
+              - k8s-annotated-cm-delete
+              - k8s-pod-create-events
+              - plugin-based
+        'secondary':
+          name: "" # Tests will override this temporarily
+          notification:
+            disabled: true
+          bindings:
+            executors:
+              - kubectl-read-only
+            sources:
+              - k8s-updates
+    discord:
+      enabled: false # Tests will override this temporarily
+      token: "" # Provide a valid token for Botkube app
+      botID: "" # Provide a valid Application Client ID for Botkube app
+      channels:
+        'default':
+          id: "" # Tests will override this channel ID temporarily
+          bindings:
+            executors:
+              - kubectl-read-only
+              - kubectl-wait-cmd
+              - kubectl-exec-cmd
+              - kubectl-allow-all
+              - plugin-based
+            sources:
+              - k8s-events
+              - k8s-annotated-cm-delete
+              - k8s-pod-create-events
+              - plugin-based
+        'secondary':
+          id: "" # Tests will override this channel ID temporarily
+          notification:
+            disabled: true
+          bindings:
+            # -- Executors configuration for a given channel.
+            executors:
+              - kubectl-read-only
+            # -- Notification sources configuration for a given channel.
+            sources:
+              - k8s-updates
+
+sources:
+  'k8s-events':
+    kubernetes:
+      recommendations:
+        pod:
+          noLatestImageTag: true
+          labelsSet: true
+        ingress:
+          backendServiceValid: false
+          tlsSecretValid: false
+      namespaces:
+        include:
+          - botkube
+      event:
+        types:
+          - create
+          - update
+      resources:
+        - type: v1/configmaps
+  'k8s-annotated-cm-delete':
+    kubernetes:
+      namespaces:
+        include:
+          - botkube
+      labels:
+        test.botkube.io: "true"
+      event:
+        types:
+          - delete
+      resources:
+        - type: v1/configmaps
+
+  'k8s-pod-create-events':
+    kubernetes:
+      namespaces:
+        include:
+          - botkube
+      event:
+        types:
+          - create
+      resources:
+        - type: v1/pods
+
+  'k8s-updates':
+    kubernetes:
+      namespaces:
+        include:
+          - default
+      event:
+        types:
+          - create
+          - update
+          - delete
+      resources:
+        - type: v1/configmaps
+          namespaces:
+            include:
+              - botkube
+          event: # overrides top level `event` entry
+            types:
+              - update
+
+  'plugin-based':
+    botkube/cm-watcher:
+      enabled: true
+      config:
+        configMapName: cm-watcher-trigger
+
+executors:
+  'kubectl-read-only':
+    kubectl:
+      enabled: true
+      namespaces:
+        include:
+          - botkube
+          - default
+  'kubectl-wait-cmd':
+    kubectl:
+      enabled: true
+      namespaces:
+        include:
+          - botkube
+          - default
+      commands:
+        verbs: [ "wait" ]
+      restrictAccess: false
+  'kubectl-exec-cmd':
+    kubectl:
+      enabled: false
+      namespaces:
+        include:
+          - botkube
+          - default
+      commands:
+        verbs: [ "exec" ]
+      restrictAccess: false
+  'kubectl-allow-all':
+    kubectl:
+      enabled: true
+      namespaces:
+        include:
+          - ".*"
+      commands:
+        verbs: [ "get" ]
+        resources: [ "deployments" ]
+  'kubectl-not-bound-to-any-channel':
+    kubectl:
+      enabled: true
+      namespaces:
+        include:
+          - ".*"
+      commands:
+        verbs: [ "port-forward" ]
+        resources: [ "deployments" ]
+
+  'plugin-based':
+    botkube/echo:
+      enabled: true
+      config:
+        changeResponseToUpperCase: true
+
+plugins:
+  cacheDir: "/tmp"
+  repositories:
+    botkube: http://host.k3d.internal:3000/botkube.yaml
+
+actions:
+  'get-created-resource':
+    enabled: true
+    displayName: "Get created resource"
+    command: "kubectl get {{ .Event.TypeMeta.Kind | lower }}{{ if .Event.Namespace }} -n {{ .Event.Namespace }}{{ end }} {{ .Event.Name }}"
+    bindings:
+      sources:
+        - k8s-pod-create-events
+      executors:
+        - kubectl-read-only
+
+filters:
+  kubernetes:
+    objectAnnotationChecker: true
+    nodeEventsChecker: false
+
+settings:
+  clusterName: sample
+  upgradeNotifier: false
+  persistentConfig:
+    runtime:
+      configMap:
+        annotations:
+          botkube.io/disable: "true"
+    startup:
+      configMap:
+        annotations:
+          botkube.io/disable: "true"
+
+extraAnnotations:
+  botkube.io/disable: "true"

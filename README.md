@@ -1,5 +1,7 @@
 # eks-cicd-dr_aws-configs
 
+## Certificate
+
 ## EKS
 
 * Create primary-seoul and secondary-osaka EKS clusters
@@ -90,6 +92,22 @@ $ kubectl patch storageclass gp2 -p '{"metadata": {"annotations":{"storageclass.
 $ kubectl apply -f primary-seoul-storageclass.yaml
 $ eksctl utils write-kubeconfig --region ap-northeast-3 --cluster cicd-dr-secondary-osaka
 $ kubectl patch storageclass gp2 -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
+```
+
+* Install ArgoCD
+  * 
+
+* Install Botkube
+  * Get slack token through below reference
+  * Ref : https://docs.botkube.io/installation/slack/
+
+```
+# Install Botkube
+$ cd botkube
+$ eksctl utils write-kubeconfig --region ap-northeast-2 --cluster cicd-dr-primary-seoul
+$ helm install botkube --namespace botkube --create-namespace --set communications.default-group.socketSlack.channels.default.name=aws_eks-cicd-dr_eks-seoul --set communications.default-group.socketSlack.appToken={app-token} --set communications.default-group.socketSlack.botToken={bot-token} --set settings.clusterName=eks-seoul . 
+$ eksctl utils write-kubeconfig --region ap-northeast-3 --cluster cicd-dr-secondary-osaka
+$ helm install botkube --namespace botkube --create-namespace --set communications.default-group.socketSlack.channels.default.name=aws_eks-cicd-dr_eks-osaka --set communications.default-group.socketSlack.appToken={app-token} --set communications.default-group.socketSlack.botToken={bot-token} --set settings.clusterName=eks-osaka . 
 ```
 
 ## FIS 
