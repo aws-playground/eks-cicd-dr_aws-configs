@@ -1,6 +1,104 @@
 # eks-cicd-dr_aws-configs
 
-## Certificate
+## Certificate Manager
+
+* Create letsencrypt IAM User, Access Key
+
+```
+# Create letsencrypt IAM user
+$ aws iam create-user --user-name letsencrypt
+{
+    "User": {
+        "Path": "/",
+        "UserName": "letsencrypt",
+        "UserId": "AIDA2S2LVTEOIYTEXDCLM",
+        "Arn": "arn:aws:iam::727618787612:user/letsencrypt",
+        "CreateDate": "2022-12-05T03:37:20+00:00"
+    }
+}
+
+# Create & attach policy for letsencrypt IAM user
+$ cat <<EOF > policy.json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "route53:ListHostedZones",
+        "route53:GetChange",
+        "route53:ChangeResourceRecordSets"
+      ],
+      "Resource": [
+        "*"
+      ]
+    }
+  ]
+}
+EOF 
+$ aws iam create-policy --policy-name letsencrypt-policy --policy-document file://policy.json
+$ aws iam attach-user-policy --user-name letsencrypt --policy-arn arn:aws:iam::727618787612:policy/letsencrypt-policy
+
+# Create access key for letsencryt user
+$ aws iam create-access-key --user-name letsencrypt
+{
+    "AccessKey": {
+        "UserName": "letsencrypt",
+        "AccessKeyId": "{AWS_Access_ID"},
+        "Status": "Active",
+        "SecretAccessKey": "{AWS_Secret_Key}",
+        "CreateDate": "2022-12-05T03:38:49+00:00"
+    }
+}
+```
+
+* Create crdential file for certbot
+
+```
+$ cat <<EOF > ~/.aws/credentials
+[letsencrypt]
+aws_access_key_id={AWS_Access_ID}
+aws_secret_access_key={AWS_Secret_Key}
+EOF
+```
+
+* Create certificate by using certbot
+
+```
+$ mkdir certbot cd certbot
+$ certbot certonly --dns-route53 -n -d "aws-playground.dev" -d "*.aws-playground.dev" --email supsup5642@gmail.com --agree-tos --config-dir . --work-dir . --logs-dir .
+Saving debug log to /Users/ssup2/certbot/letsencrypt.log
+Account registered.
+Requesting a certificate for aws-playground.dev and *.aws-playground.dev
+
+Successfully received certificate.
+Certificate is saved at: /Users/ssupp/certbot/live/aws-playground.dev/fullchain.pem
+Key is saved at:         /Users/ssupp/certbot/live/aws-playground.dev/privkey.pem
+This certificate expires on 2023-03-05.
+These files will be updated when the certificate renews.
+
+NEXT STEPS:
+- The certificate will need to be renewed before it expires. Certbot can automatically renew the certificate in the background, but you may need to take steps to enable that functionality. See https://certbot.org/renewal-setup for instructions.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+If you like Certbot, please consider supporting our work by:
+ * Donating to ISRG / Let's Encrypt:   https://letsencrypt.org/donate
+ * Donating to EFF:                    https://eff.org/donate-le
+```
+
+* Import created certificate
+
+```
+$ cd live/aws-playground.dev
+$ aws acm import-certificate --region ap-northeast-2 --certificate fileb://cert.pem --private-key fileb://privkey.pem --certificate-chain fileb://chain.pem
+{
+    "CertificateArn": "arn:aws:acm:ap-northeast-2:727618787612:certificate/08554d50-4579-4ea9-bc0d-42b7591df7a2"
+}
+$ aws acm import-certificate --region ap-northeast-3 --certificate fileb://cert.pem --private-key fileb://privkey.pem --certificate-chain fileb://chain.pem
+{
+    "CertificateArn": "arn:aws:acm:ap-northeast-3:727618787612:certificate/dcd9c7f6-60a2-4871-a15d-cd757831b498"
+}
+```
 
 ## EKS
 
@@ -95,7 +193,15 @@ $ kubectl patch storageclass gp2 -p '{"metadata": {"annotations":{"storageclass.
 ```
 
 * Install ArgoCD
-  * 
+
+```
+# Install ArgoCD
+$ cd argo-cd
+$ eksctl utils write-kubeconfig --region ap-northeast-2 --cluster cicd-dr-primary-seoul
+$ 
+$ eksctl utils write-kubeconfig --region ap-northeast-3 --cluster cicd-dr-secondary-osaka
+$ 
+```
 
 * Install Botkube
   * Get slack token through below reference
