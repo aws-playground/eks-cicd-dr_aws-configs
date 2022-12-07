@@ -1587,7 +1587,7 @@ server:
     # -- Additional ingress annotations
     annotations:
       alb.ingress.kubernetes.io/scheme: internet-facing
-      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-northeast-3:727618787612:certificate/dcd9c7f6-60a2-4871-a15d-cd757831b498
+      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-northeast-1:727618787612:certificate/043ffa30-3d8a-42c4-ae51-566594fe6787
     # -- Additional ingress labels
     labels: {}
     # -- Defines which ingress controller will implement the resource
@@ -1598,7 +1598,7 @@ server:
     ## Hostnames must be provided if Ingress is enabled.
     ## Secrets must be manually created in the namespace
     hosts:
-      - peccy-argocd-osaka.aws-playground.dev
+      - peccy-argocd-tyoko.aws-playground.dev
       # - argocd.example.com
 
     # -- List of ingress paths
