@@ -1,5 +1,34 @@
 # eks-cicd-dr_aws-configs
 
+## ECR
+
+* Create private repos
+
+```
+$ aws ecr create-repository --region ap-northeast-2 --repository-name eks-cicd-dr_service-peccy-web
+$ aws ecr create-repository --region ap-northeast-1 --repository-name eks-cicd-dr_service-peccy-web
+$ aws ecr create-repository --region ap-northeast-2 --repository-name eks-cicd-dr_service-peccy-app
+$ aws ecr create-repository --region ap-northeast-1 --repository-name eks-cicd-dr_service-peccy-app
+```
+
+## CodeBuild
+
+* Create role for CodeBuild
+  * Ref : https://blog.chrismitchellonline.com/posts/codebuild-iam-role
+
+```
+$ cd codebuild
+$ aws iam create-role --role-name CodeBuildRole --assume-role-policy-document file://codebuild-iam-role-trust.json
+$ aws iam put-role-policy --role-name CodeBuildRole --policy-name CodeBuildPolicy --policy-document file://codebuild-iam-policy.json 
+```
+
+* Create CodeBuild project
+  * Ref : https://docs.aws.amazon.com/codebuild/latest/userguide/create-project-cli.html
+
+```
+
+```
+
 ## Certificate Manager
 
 * Create letsencrypt IAM User, Access Key
@@ -7,36 +36,10 @@
 ```
 # Create letsencrypt IAM user
 $ aws iam create-user --user-name letsencrypt
-{
-    "User": {
-        "Path": "/",
-        "UserName": "letsencrypt",
-        "UserId": "AIDA2S2LVTEOIYTEXDCLM",
-        "Arn": "arn:aws:iam::727618787612:user/letsencrypt",
-        "CreateDate": "2022-12-05T03:37:20+00:00"
-    }
-}
 
 # Create & attach policy for letsencrypt IAM user
-$ cat <<EOF > policy.json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "route53:ListHostedZones",
-        "route53:GetChange",
-        "route53:ChangeResourceRecordSets"
-      ],
-      "Resource": [
-        "*"
-      ]
-    }
-  ]
-}
-EOF 
-$ aws iam create-policy --policy-name letsencrypt-policy --policy-document file://policy.json
+$ cd certificate_maanger
+$ aws iam create-policy --policy-name letsencrypt-policy --policy-document file://iam-policy.json
 $ aws iam attach-user-policy --user-name letsencrypt --policy-arn arn:aws:iam::727618787612:policy/letsencrypt-policy
 
 # Create access key for letsencryt user
@@ -65,7 +68,7 @@ EOF
 * Create certificate by using certbot
 
 ```
-$ mkdir certbot cd certbot
+$ mkdir certbot && cd certbot
 $ certbot certonly --dns-route53 -n -d "aws-playground.dev" -d "*.aws-playground.dev" --email supsup5642@gmail.com --agree-tos --config-dir . --work-dir . --logs-dir .
 Saving debug log to /Users/ssup2/certbot/letsencrypt.log
 Account registered.
@@ -94,20 +97,24 @@ $ aws acm import-certificate --region ap-northeast-2 --certificate fileb://cert.
 {
     "CertificateArn": "arn:aws:acm:ap-northeast-2:727618787612:certificate/08554d50-4579-4ea9-bc0d-42b7591df7a2"
 }
-$ aws acm import-certificate --region ap-northeast-3 --certificate fileb://cert.pem --private-key fileb://privkey.pem --certificate-chain fileb://chain.pem
+$ aws acm import-certificate --region ap-northeast-1 --certificate fileb://cert.pem --private-key fileb://privkey.pem --certificate-chain fileb://chain.pem
 {
-    "CertificateArn": "arn:aws:acm:ap-northeast-3:727618787612:certificate/dcd9c7f6-60a2-4871-a15d-cd757831b498"
+    "CertificateArn": "arn:aws:acm:ap-northeast-1:727618787612:certificate/043ffa30-3d8a-42c4-ae51-566594fe6787"
 }
 ```
 
+## EFS
+
+* TODO
+
 ## EKS
 
-* Create primary-seoul and secondary-osaka EKS clusters
+* Create primary-seoul and secondary-tyoko EKS clusters
 
 ```
 $ cd eks-eksctl
 $ eksctl create cluster -f primary-seoul.yaml
-$ eksctl create cluster -f secondary-osaka.yaml
+$ eksctl create cluster -f secondary-tokyo.yaml
 ```
 
 * Install AWS Load Balancer Controller
@@ -132,17 +139,21 @@ $ aws iam create-policy --policy-name AWSLoadBalancerControllerIAMPolicy --polic
     }
 }
 
+# Create EKS cluster's oidc-provider
+$ eksctl utils associate-iam-oidc-provider --cluster eks-cicd-dr-primary-seoul --approve --region ap-northeast-2
+$ eksctl utils associate-iam-oidc-provider --cluster eks-cicd-dr-secondary-tyoko --approve --region ap-northeast-1
+
 # Create aws-load-balancer-controller service account in EKS clusters and assign role AmazonEKSLoadBalancerControllerRole to aws-load-balancer-controller service account
-$ eksctl create iamserviceaccount --cluster=cicd-dr-primary-seoul --region ap-northeast-2 --namespace=kube-system --name=aws-load-balancer-controller --role-name "AmazonEKSLoadBalancerControllerRoleSeoul" --attach-policy-arn=arn:aws:iam::727618787612:policy/AWSLoadBalancerControllerIAMPolicy --approve
-$ eksctl create iamserviceaccount --cluster=cicd-dr-secondary-osaka --region ap-northeast-3 --namespace=kube-system --name=aws-load-balancer-controller --role-name "AmazonEKSLoadBalancerControllerRoleOsaka" --attach-policy-arn=arn:aws:iam::727618787612:policy/AWSLoadBalancerControllerIAMPolicy --approve
+$ eksctl create iamserviceaccount --cluster=eks-cicd-dr-primary-seoul --region ap-northeast-2 --namespace=kube-system --name=aws-load-balancer-controller --role-name "AmazonEKSLoadBalancerControllerRoleSeoul" --attach-policy-arn=arn:aws:iam::727618787612:policy/AWSLoadBalancerControllerIAMPolicy --approve
+$ eksctl create iamserviceaccount --cluster=eks-cicd-dr-secondary-tyoko --region ap-northeast-1 --namespace=kube-system --name=aws-load-balancer-controller --role-name "AmazonEKSLoadBalancerControllerRoleTyoko" --attach-policy-arn=arn:aws:iam::727618787612:policy/AWSLoadBalancerControllerIAMPolicy --approve
 
 # Install AWS Load Balancer Controller   
 $ helm repo add eks https://aws.github.io/eks-charts
 $ helm repo update
-$ eksctl utils write-kubeconfig --region ap-northeast-2 --cluster cicd-dr-primary-seoul
+$ eksctl utils write-kubeconfig --region ap-northeast-2 --cluster eks-cicd-dr-primary-seoul
 $ helm install aws-load-balancer-controller eks/aws-load-balancer-controller -n kube-system --set clusterName=cicd-dr-primary-seoul --set serviceAccount.create=false --set serviceAccount.name=aws-load-balancer-controller --set nodeSelector."alpha\.eksctl\.io/nodegroup-name"=manage
-$ eksctl utils write-kubeconfig --region ap-northeast-3 --cluster cicd-dr-secondary-osaka
-$ helm install aws-load-balancer-controller eks/aws-load-balancer-controller -n kube-system --set clusterName=cicd-dr-secondary-osaka --set serviceAccount.create=false --set serviceAccount.name=aws-load-balancer-controller --set nodeSelector."alpha\.eksctl\.io/nodegroup-name"=manage
+$ eksctl utils write-kubeconfig --region ap-northeast-1 --cluster eks-cicd-dr-secondary-tyoko
+$ helm install aws-load-balancer-controller eks/aws-load-balancer-controller -n kube-system --set clusterName=cicd-dr-secondary-tyoko --set serviceAccount.create=false --set serviceAccount.name=aws-load-balancer-controller --set nodeSelector."alpha\.eksctl\.io/nodegroup-name"=manage
 ```
 
 * Install EFS CSI driver
@@ -150,8 +161,8 @@ $ helm install aws-load-balancer-controller eks/aws-load-balancer-controller -n 
 
 ```
 # Create IAM policy for EFS CSI driver
-$ curl -o iam-policy-example.json https://raw.githubusercontent.com/kubernetes-sigs/aws-efs-csi-driver/master/docs/iam-policy-example.json
-$ aws iam create-policy --policy-name AmazonEKS_EFS_CSI_Driver_Policy --policy-document file://iam-policy-example.json
+$ eks-efs-csi 
+$ aws iam create-policy --policy-name AmazonEKS_EFS_CSI_Driver_Policy --policy-document file://iam-policy.json 
 {
     "Policy": {
         "PolicyName": "AmazonEKS_EFS_CSI_Driver_Policy",
@@ -167,29 +178,23 @@ $ aws iam create-policy --policy-name AmazonEKS_EFS_CSI_Driver_Policy --policy-d
     }
 }
 
-# Create EKS cluster's oidc-provider
-$ eksctl utils associate-iam-oidc-provider --cluster cicd-dr-primary-seoul --approve --region ap-northeast-2
-$ eksctl utils associate-iam-oidc-provider --cluster cicd-dr-secondary-osaka --approve --region ap-northeast-3
-
 # Create efs-csi-controller-sa service account in EKS clusters and assign role AmazonEKS_EFS_CSI_Driver_Policy to efs-csi-controller-sa service account
-$ eksctl create iamserviceaccount --cluster cicd-dr-primary-seoul --namespace kube-system --name efs-csi-controller-sa --attach-policy-arn arn:aws:iam::727618787612:policy/AmazonEKS_EFS_CSI_Driver_Policy --approve --region ap-northeast-2
-$ eksctl create iamserviceaccount --cluster cicd-dr-secondary-osaka --namespace kube-system --name efs-csi-controller-sa --attach-policy-arn arn:aws:iam::727618787612:policy/AmazonEKS_EFS_CSI_Driver_Policy --approve --region ap-northeast-3
+$ eksctl create iamserviceaccount --cluster eks-cicd-dr-primary-seoul --namespace kube-system --name efs-csi-controller-sa --attach-policy-arn arn:aws:iam::727618787612:policy/AmazonEKS_EFS_CSI_Driver_Policy --approve --region ap-northeast-2
+$ eksctl create iamserviceaccount --cluster eks-cicd-dr-secondary-tyoko --namespace kube-system --name efs-csi-controller-sa --attach-policy-arn arn:aws:iam::727618787612:policy/AmazonEKS_EFS_CSI_Driver_Policy --approve --region ap-northeast-1
 
 # Install EFS CSI driver
 $ helm repo add aws-efs-csi-driver https://kubernetes-sigs.github.io/aws-efs-csi-driver/
 $ helm repo update
-$ eksctl utils write-kubeconfig --region ap-northeast-2 --cluster cicd-dr-primary-seoul
+$ eksctl utils write-kubeconfig --region ap-northeast-2 --cluster eks-cicd-dr-primary-seoul
 $ helm upgrade -i aws-efs-csi-driver aws-efs-csi-driver/aws-efs-csi-driver --namespace kube-system --set controller.serviceAccount.create=false --set controller.serviceAccount.name=efs-csi-controller-sa --set controller.nodeSelector."alpha\.eksctl\.io/nodegroup-name"=manage --set node.nodeSelector."alpha\.eksctl\.io/nodegroup-name"=app-server
-$ eksctl utils write-kubeconfig --region ap-northeast-3 --cluster cicd-dr-secondary-osaka
+$ eksctl utils write-kubeconfig --region ap-northeast-1 --cluster eks-cicd-dr-secondary-tyoko
 $ helm upgrade -i aws-efs-csi-driver aws-efs-csi-driver/aws-efs-csi-driver --namespace kube-system --set controller.serviceAccount.create=false --set controller.serviceAccount.name=efs-csi-controller-sa --set controller.nodeSelector."alpha\.eksctl\.io/nodegroup-name"=manage --set node.nodeSelector."alpha\.eksctl\.io/nodegroup-name"=app-server
 
-# Create EFS storage class
-$ cd eks-efs-csi 
-$ eksctl utils write-kubeconfig --region ap-northeast-2 --cluster cicd-dr-primary-seoul
-$ kubectl patch storageclass gp2 -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
-$ kubectl apply -f primary-seoul-storageclass.yaml
-$ eksctl utils write-kubeconfig --region ap-northeast-3 --cluster cicd-dr-secondary-osaka
-$ kubectl patch storageclass gp2 -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
+# Create EFS PV
+$ eksctl utils write-kubeconfig --region ap-northeast-2 --cluster eks-cicd-dr-primary-seoul
+$ kubectl apply -f storageclass.yaml -f pv-seoul.yaml -f vpc.yaml
+$ eksctl utils write-kubeconfig --region ap-northeast-1 --cluster eks-cicd-dr-secondary-tyoko
+$ kubectl apply -f storageclass.yaml -f pv-tyoko.yaml -f pvc.yaml
 ```
 
 * Install ArgoCD
@@ -197,23 +202,22 @@ $ kubectl patch storageclass gp2 -p '{"metadata": {"annotations":{"storageclass.
 ```
 # Install ArgoCD
 $ cd argo-cd
-$ eksctl utils write-kubeconfig --region ap-northeast-2 --cluster cicd-dr-primary-seoul
-$ 
-$ eksctl utils write-kubeconfig --region ap-northeast-3 --cluster cicd-dr-secondary-osaka
-$ 
+$ eksctl utils write-kubeconfig --region ap-northeast-2 --cluster eks-cicd-dr-primary-seoul
+$ helm install argo-cd --namespace argo-cd --create-namespace -f value-seoul.yaml 
+$ eksctl utils write-kubeconfig --region ap-northeast-1 --cluster eks-cicd-dr-secondary-tyoko
+$ helm install argo-cd --namespace argo-cd --create-namespace -f value-tyoko.yaml 
 ```
 
 * Install Botkube
   * Get slack token through below reference
   * Ref : https://docs.botkube.io/installation/slack/
-
 ```
 # Install Botkube
 $ cd botkube
-$ eksctl utils write-kubeconfig --region ap-northeast-2 --cluster cicd-dr-primary-seoul
+$ eksctl utils write-kubeconfig --region ap-northeast-2 --cluster eks-cicd-dr-primary-seoul
 $ helm install botkube --namespace botkube --create-namespace --set communications.default-group.socketSlack.channels.default.name=aws_eks-cicd-dr_eks-seoul --set communications.default-group.socketSlack.appToken={app-token} --set communications.default-group.socketSlack.botToken={bot-token} --set settings.clusterName=eks-seoul . 
-$ eksctl utils write-kubeconfig --region ap-northeast-3 --cluster cicd-dr-secondary-osaka
-$ helm install botkube --namespace botkube --create-namespace --set communications.default-group.socketSlack.channels.default.name=aws_eks-cicd-dr_eks-osaka --set communications.default-group.socketSlack.appToken={app-token} --set communications.default-group.socketSlack.botToken={bot-token} --set settings.clusterName=eks-osaka . 
+$ eksctl utils write-kubeconfig --region ap-northeast-1 --cluster eks-cicd-dr-secondary-tyoko
+$ helm install botkube --namespace botkube --create-namespace --set communications.default-group.socketSlack.channels.default.name=aws_eks-cicd-dr_eks-tyoko --set communications.default-group.socketSlack.appToken={app-token} --set communications.default-group.socketSlack.botToken={bot-token} --set settings.clusterName=eks-tyoko . 
 ```
 
 ## FIS 

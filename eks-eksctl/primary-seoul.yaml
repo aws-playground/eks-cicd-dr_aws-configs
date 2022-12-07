@@ -1,7 +1,7 @@
 apiVersion: eksctl.io/v1alpha5
 kind: ClusterConfig
 metadata:
-  name: cicd-dr-primary-seoul
+  name: eks-cicd-dr-primary-seoul
   region: ap-northeast-2
 managedNodeGroups:
   - name: manage

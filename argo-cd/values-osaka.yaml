@@ -188,7 +188,7 @@ configs:
 
     ## Server properties
     # -- Run server without TLS
-    server.insecure: false
+    server.insecure: true
     # -- Value for base href in index.html. Used if Argo CD is running behind reverse proxy under subpath different from /
     server.basehref: /
     # -- Used if Argo CD is running behind reverse proxy under subpath different from /
@@ -591,7 +591,8 @@ controller:
   volumes: []
 
   # -- [Node selector]
-  nodeSelector: {}
+  nodeSelector:
+    alpha.eksctl.io/nodegroup-name: manage
 
   # -- [Tolerations] for use with node taints
   tolerations: []
@@ -939,7 +940,8 @@ dex:
   servicePortMetrics: 5558
 
   # -- [Node selector]
-  nodeSelector: {}
+  nodeSelector:
+    alpha.eksctl.io/nodegroup-name: manage
   # -- [Tolerations] for use with node taints
   tolerations: []
   # -- Assign custom [affinity] rules to the deployment
@@ -1067,7 +1069,8 @@ redis:
       - ALL
 
   # -- [Node selector]
-  nodeSelector: {}
+  nodeSelector:
+    alpha.eksctl.io/nodegroup-name: manage
   # -- [Tolerations] for use with node taints
   tolerations: []
   # -- Assign custom [affinity] rules to the deployment
@@ -1402,7 +1405,8 @@ server:
   volumes: []
 
   # -- [Node selector]
-  nodeSelector: {}
+  nodeSelector:
+    alpha.eksctl.io/nodegroup-name: manage
   # -- [Tolerations] for use with node taints
   tolerations: []
   # -- Assign custom [affinity] rules to the deployment
@@ -1500,7 +1504,7 @@ server:
     # -- Server service labels
     labels: {}
     # -- Server service type
-    type: ClusterIP
+    type: NodePort
     # -- Server service http port for NodePort service type (only if `server.service.type` is set to "NodePort")
     nodePortHttp: 30080
     # -- Server service https port for NodePort service type (only if `server.service.type` is set to "NodePort")
@@ -1579,20 +1583,22 @@ server:
 
   ingress:
     # -- Enable an ingress resource for the Argo CD server
-    enabled: false
+    enabled: true
     # -- Additional ingress annotations
-    annotations: {}
+    annotations:
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-northeast-3:727618787612:certificate/dcd9c7f6-60a2-4871-a15d-cd757831b498
     # -- Additional ingress labels
     labels: {}
     # -- Defines which ingress controller will implement the resource
-    ingressClassName: ""
+    ingressClassName: "alb"
 
     # -- List of ingress hosts
     ## Argo Ingress.
     ## Hostnames must be provided if Ingress is enabled.
     ## Secrets must be manually created in the namespace
     hosts:
-      []
+      - peccy-argocd-osaka.aws-playground.dev
       # - argocd.example.com
 
     # -- List of ingress paths
@@ -1965,7 +1971,8 @@ repoServer:
   #    emptyDir: {}
 
   # -- [Node selector]
-  nodeSelector: {}
+  nodeSelector:
+    alpha.eksctl.io/nodegroup-name: manage
   # -- [Tolerations] for use with node taints
   tolerations: []
   # -- Assign custom [affinity] rules to the deployment
@@ -2313,7 +2320,8 @@ applicationSet:
     #   memory: 128Mi
 
   # -- [Node selector]
-  nodeSelector: {}
+  nodeSelector:
+    alpha.eksctl.io/nodegroup-name: manage
 
   # -- [Tolerations] for use with node taints
   tolerations: []
@@ -2442,7 +2450,8 @@ notifications:
   imagePullSecrets: []
 
   # -- [Node selector]
-  nodeSelector: {}
+  nodeSelector:
+    alpha.eksctl.io/nodegroup-name: manage
 
   # -- Define user-defined context
   ## For more information: https://argocd-notifications.readthedocs.io/en/stable/templates/#defining-user-defined-context
@@ -2953,4 +2962,6 @@ notifications:
       tolerations: []
 
       # -- [Node selector]
-      nodeSelector: {}
+      nodeSelector:
+        alpha.eksctl.io/nodegroup-name: manage
+
