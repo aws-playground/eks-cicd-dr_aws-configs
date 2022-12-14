@@ -18,13 +18,20 @@ $ aws ecr create-repository --region ap-northeast-1 --repository-name eks-cicd-d
   * Ref : https://blog.chrismitchellonline.com/posts/codebuild-iam-role
 
 ```
-$ cd codebuild
 $ aws iam create-role --role-name CodeBuildRole --assume-role-policy-document file://codebuild-iam-role-trust.json
-$ aws iam put-role-policy --role-name CodeBuildRole --policy-name CodeBuildPolicy --policy-document file://codebuild-iam-policy.json 
+$ aws iam attach-role-policy --role-name CodeBuildRole --policy-arn arn:aws:iam::aws:policy/AWSCodeBuildAdminAccess
+$ aws iam attach-role-policy --role-name CodeBuildRole --policy-arn arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess
+$ aws iam attach-role-policy --role-name CodeBuildRole --policy-arn arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
 ```
 
 * Create CodeBuild project
   * Ref : https://docs.aws.amazon.com/codebuild/latest/userguide/create-project-cli.html
+  * TODO
+
+
+## Route 53
+
+* Create hosted zone
   * TODO
 
 
@@ -125,20 +132,6 @@ $ eksctl create cluster -f secondary-tokyo.yaml
 # Create IAM policy
 $ cd eks-loadbalancer-controller
 $ aws iam create-policy --policy-name AWSLoadBalancerControllerIAMPolicy --policy-document file://iam_policy.json
-{
-    "Policy": {
-        "PolicyName": "AWSLoadBalancerControllerIAMPolicy",
-        "PolicyId": "ANPA2S2LVTEOBQJHOCHII",
-        "Arn": "arn:aws:iam::727618787612:policy/AWSLoadBalancerControllerIAMPolicy",
-        "Path": "/",
-        "DefaultVersionId": "v1",
-        "AttachmentCount": 0,
-        "PermissionsBoundaryUsageCount": 0,
-        "IsAttachable": true,
-        "CreateDate": "2022-11-30T03:23:14+00:00",
-        "UpdateDate": "2022-11-30T03:23:14+00:00"
-    }
-}
 
 # Create EKS cluster's oidc-provider
 $ eksctl utils associate-iam-oidc-provider --cluster eks-cicd-dr-primary-seoul --approve --region ap-northeast-2
@@ -184,6 +177,39 @@ $ eksctl utils write-kubeconfig --region ap-northeast-1 --cluster eks-cicd-dr-se
 $ kubectl apply -f storageclass.yaml -f pv-tyoko.yaml -f pvc.yaml
 ```
 
+* Install ExternalDNS
+  * Ref : https://aws.amazon.com/ko/premiumsupport/knowledge-center/eks-set-up-externaldns/
+
+```
+# Create IAM policy
+$ cd externaldns
+$ aws iam create-policy --policy-name AmazonEKSExternalDNSControllerIAMPolicy --policy-document file://iam-policy.json
+{
+    "Policy": {
+        "PolicyName": "AmazonEKSExternalDNSControllerIAMPolicy",
+        "PolicyId": "ANPA2S2LVTEOAJP3HTM5T",
+        "Arn": "arn:aws:iam::727618787612:policy/AmazonEKSExternalDNSControllerIAMPolicy",
+        "Path": "/",
+        "DefaultVersionId": "v1",
+        "AttachmentCount": 0,
+        "PermissionsBoundaryUsageCount": 0,
+        "IsAttachable": true,
+        "CreateDate": "2022-12-13T23:35:31+00:00",
+        "UpdateDate": "2022-12-13T23:35:31+00:00"
+    }
+}
+
+# Create external-dns service account in EKS clusters and assign role AmazonEKSLoadBalancerControllerRole to aws-load-balancer-controller service account
+$ eksctl create iamserviceaccount --cluster=eks-cicd-dr-primary-seoul --region ap-northeast-2 --namespace=kube-system --name=external-dns --role-name "AmazonEKSExternalDNSControllerRoleSeoul" --attach-policy-arn=arn:aws:iam::727618787612:policy/AmazonEKSExternalDNSControllerIAMPolicy --approve
+$ eksctl create iamserviceaccount --cluster=eks-cicd-dr-secondary-tyoko --region ap-northeast-1 --namespace=kube-system --name=external-dns --role-name "AmazonEKSExternalDNSControllerRoleTyoko" --attach-policy-arn=arn:aws:iam::727618787612:policy/AmazonEKSExternalDNSControllerIAMPolicy --approve
+
+# Install ExternalDNS
+$ eksctl utils write-kubeconfig --region ap-northeast-2 --cluster eks-cicd-dr-primary-seoul
+$ kubectl apply -f externaldns-with-rbac-seoul.yaml
+$ eksctl utils write-kubeconfig --region ap-northeast-1 --cluster eks-cicd-dr-secondary-tyoko
+$ kubectl apply -f externaldns-with-rbac-tyoko.yaml
+```
+
 * Install ArgoCD
 
 ```
@@ -193,9 +219,6 @@ $ eksctl utils write-kubeconfig --region ap-northeast-2 --cluster eks-cicd-dr-pr
 $ helm install argo-cd --namespace argo-cd --create-namespace -f values-seoul.yaml . 
 $ eksctl utils write-kubeconfig --region ap-northeast-1 --cluster eks-cicd-dr-secondary-tyoko
 $ helm install argo-cd --namespace argo-cd --create-namespace -f values-tyoko.yaml .
-
-# Set Route53 Alias
-$ TODO
 ```
 
 * Install Botkube
@@ -222,5 +245,4 @@ $ cd fis-iam
 $ aws iam create-role --role-name my-fis-role --assume-role-policy-document file://fis-role-trust-policy.json
 $ aws iam attach-role-policy --role-name my-fis-role --policy-arn arn:aws:iam::aws:policy/service-role/AWSFaultInjectionSimulatorNetworkAccess
 ```
-
 
