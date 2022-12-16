@@ -44,7 +44,7 @@ $ aws iam attach-role-policy --role-name CodeBuildRole --policy-arn arn:aws:iam:
 $ aws iam create-user --user-name letsencrypt
 
 # Create & attach policy for letsencrypt IAM user
-$ cd certificate_maanger
+$ cd aws_certificate_maanger
 $ aws iam create-policy --policy-name letsencrypt-policy --policy-document file://iam-policy.json
 $ aws iam attach-user-policy --user-name letsencrypt --policy-arn arn:aws:iam::727618787612:policy/letsencrypt-policy
 
@@ -120,17 +120,17 @@ $ aws acm import-certificate --region ap-northeast-1 --certificate fileb://cert.
 * Create primary-seoul and secondary-tyoko EKS clusters
 
 ```
-$ cd eks-eksctl
+$ cd eks_eksctl
 $ eksctl create cluster -f primary-seoul.yaml
 $ eksctl create cluster -f secondary-tokyo.yaml
 ```
 
-* Install AWS Load Balancer Controller
+* Install AWS load balancer controller
   * Ref : https://docs.aws.amazon.com/eks/latest/userguide/aws-load-balancer-controller.html
 
 ```
 # Create IAM policy
-$ cd eks-loadbalancer-controller
+$ cd eks_loadbalancer-controller
 $ aws iam create-policy --policy-name AWSLoadBalancerControllerIAMPolicy --policy-document file://iam_policy.json
 
 # Create EKS cluster's oidc-provider
@@ -182,7 +182,7 @@ $ kubectl apply -f storageclass.yaml -f pv-tyoko.yaml -f pvc.yaml
 
 ```
 # Create IAM policy
-$ cd externaldns
+$ cd eks_externaldns
 $ aws iam create-policy --policy-name AmazonEKSExternalDNSControllerIAMPolicy --policy-document file://iam-policy.json
 {
     "Policy": {
@@ -210,11 +210,50 @@ $ eksctl utils write-kubeconfig --region ap-northeast-1 --cluster eks-cicd-dr-se
 $ kubectl apply -f externaldns-with-rbac-tyoko.yaml
 ```
 
+* Install CloudWatch Agent
+  * Ref : https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Container-Insights-prerequisites.html
+  * Ref : https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Container-Insights-setup-metrics.html
+
+```
+# Attach CloudWatchAgentServerPolicy to role of EKS cluster nodes
+$ aws iam list-roles --query 'Roles[*].RoleName' | grep eksctl-eks-cicd-dr-primary-seoul-NodeInstanceRole
+    "eksctl-eks-cicd-dr-primary-seoul-NodeInstanceRole-13AHXTXCBH24F",
+    "eksctl-eks-cicd-dr-primary-seoul-NodeInstanceRole-2D7QZL7PDTAI",
+    "eksctl-eks-cicd-dr-primary-seoul-NodeInstanceRole-FCQW0WEKNDPV",
+$ aws iam attach-role-policy --role-name eksctl-eks-cicd-dr-primary-seoul-NodeInstanceRole-13AHXTXCBH24F --policy-arn arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+$ aws iam attach-role-policy --role-name eksctl-eks-cicd-dr-primary-seoul-NodeInstanceRole-2D7QZL7PDTAI --policy-arn arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+$ aws iam attach-role-policy --role-name eksctl-eks-cicd-dr-primary-seoul-NodeInstanceRole-FCQW0WEKNDPV --policy-arn arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+
+$ aws iam list-roles --query 'Roles[*].RoleName' | grep eksctl-eks-cicd-dr-primary-tyoko-NodeInstanceRole
+    "eksctl-eks-cicd-dr-secondary-tyok-NodeInstanceRole-1QF0Y4R35AFZB",
+    "eksctl-eks-cicd-dr-secondary-tyok-NodeInstanceRole-1SZ1M4E9OF6QJ",
+    "eksctl-eks-cicd-dr-secondary-tyok-NodeInstanceRole-YUEZL16E7LBX",
+$ aws iam attach-role-policy --role-name eksctl-eks-cicd-dr-secondary-tyok-NodeInstanceRole-1QF0Y4R35AFZB --policy-arn arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+$ aws iam attach-role-policy --role-name eksctl-eks-cicd-dr-secondary-tyok-NodeInstanceRole-1SZ1M4E9OF6QJ --policy-arn arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+$ aws iam attach-role-policy --role-name eksctl-eks-cicd-dr-secondary-tyok-NodeInstanceRole-YUEZL16E7LBX --policy-arn arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+
+# Install to seoul cluster 
+$ eksctl utils write-kubeconfig --region ap-northeast-2 --cluster eks-cicd-dr-primary-seoul
+$ kubectl create namespace amazon-cloudwatch
+$ kubectl apply -f https://raw.githubusercontent.com/aws-samples/amazon-cloudwatch-container-insights/latest/k8s-deployment-manifest-templates/deployment-mode/daemonset/container-insights-monitoring/cwagent/cwagent-serviceaccount.yaml
+$ kubectl apply -f eks_cloudwatch-agent/cwagent-configmap-seoul.yaml
+$ kubectl apply -f https://raw.githubusercontent.com/aws-samples/amazon-cloudwatch-container-insights/latest/k8s-deployment-manifest-templates/deployment-mode/daemonset/container-insights-monitoring/cwagent/cwagent-daemonset.yaml 
+
+# Install to tyoko cluster
+$ eksctl utils write-kubeconfig --region ap-northeast-2 --cluster eks-cicd-dr-primary-seoul
+$ kubectl create namespace amazon-cloudwatch
+$ kubectl apply -f https://raw.githubusercontent.com/aws-samples/amazon-cloudwatch-container-insights/latest/k8s-deployment-manifest-templates/deployment-mode/daemonset/container-insights-monitoring/cwagent/cwagent-serviceaccount.yaml
+$ kubectl apply -f eks_cloudwatch-agent/cwagent-configmap-tyoko.yaml
+$ kubectl apply -f https://raw.githubusercontent.com/aws-samples/amazon-cloudwatch-container-insights/latest/k8s-deployment-manifest-templates/deployment-mode/daemonset/container-insights-monitoring/cwagent/cwagent-daemonset.yaml 
+```
+
+* Install 
+
 * Install ArgoCD
 
 ```
 # Install ArgoCD
-$ cd argo-cd
+$ cd eks_argo-cd
 $ eksctl utils write-kubeconfig --region ap-northeast-2 --cluster eks-cicd-dr-primary-seoul
 $ helm install argo-cd --namespace argo-cd --create-namespace -f values-seoul.yaml . 
 $ eksctl utils write-kubeconfig --region ap-northeast-1 --cluster eks-cicd-dr-secondary-tyoko
@@ -227,7 +266,7 @@ $ helm install argo-cd --namespace argo-cd --create-namespace -f values-tyoko.ya
 
 ```
 # Install Botkube
-$ cd botkube
+$ cd eks_botkube
 $ eksctl utils write-kubeconfig --region ap-northeast-2 --cluster eks-cicd-dr-primary-seoul
 $ helm install botkube --namespace botkube --create-namespace --set communications.default-group.socketSlack.channels.default.name=aws_eks-cicd-dr_eks-seoul --set communications.default-group.socketSlack.appToken={app-token} --set communications.default-group.socketSlack.botToken={bot-token} --set settings.clusterName=eks-seoul . 
 $ eksctl utils write-kubeconfig --region ap-northeast-1 --cluster eks-cicd-dr-secondary-tyoko
@@ -241,8 +280,11 @@ $ helm install botkube --namespace botkube --create-namespace --set communicatio
   * Ref : https://docs.aws.amazon.com/fis/latest/userguide/getting-started-iam-service-role.html#create-iam-role
 
 ```
-$ cd fis-iam
+$ cd aws_fis
 $ aws iam create-role --role-name my-fis-role --assume-role-policy-document file://fis-role-trust-policy.json
 $ aws iam attach-role-policy --role-name my-fis-role --policy-arn arn:aws:iam::aws:policy/service-role/AWSFaultInjectionSimulatorNetworkAccess
 ```
+
+* Create Template and Run
+  * TODO
 
