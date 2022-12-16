@@ -223,7 +223,6 @@ $ aws iam list-roles --query 'Roles[*].RoleName' | grep eksctl-eks-cicd-dr-prima
 $ aws iam attach-role-policy --role-name eksctl-eks-cicd-dr-primary-seoul-NodeInstanceRole-13AHXTXCBH24F --policy-arn arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
 $ aws iam attach-role-policy --role-name eksctl-eks-cicd-dr-primary-seoul-NodeInstanceRole-2D7QZL7PDTAI --policy-arn arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
 $ aws iam attach-role-policy --role-name eksctl-eks-cicd-dr-primary-seoul-NodeInstanceRole-FCQW0WEKNDPV --policy-arn arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
-
 $ aws iam list-roles --query 'Roles[*].RoleName' | grep eksctl-eks-cicd-dr-primary-tyoko-NodeInstanceRole
     "eksctl-eks-cicd-dr-secondary-tyok-NodeInstanceRole-1QF0Y4R35AFZB",
     "eksctl-eks-cicd-dr-secondary-tyok-NodeInstanceRole-1SZ1M4E9OF6QJ",
@@ -240,14 +239,51 @@ $ kubectl apply -f eks_cloudwatch-agent/cwagent-configmap-seoul.yaml
 $ kubectl apply -f https://raw.githubusercontent.com/aws-samples/amazon-cloudwatch-container-insights/latest/k8s-deployment-manifest-templates/deployment-mode/daemonset/container-insights-monitoring/cwagent/cwagent-daemonset.yaml 
 
 # Install to tyoko cluster
-$ eksctl utils write-kubeconfig --region ap-northeast-2 --cluster eks-cicd-dr-primary-seoul
+$ eksctl utils write-kubeconfig --region ap-northeast-1 --cluster eks-cicd-dr-secondary-tyoko
 $ kubectl create namespace amazon-cloudwatch
 $ kubectl apply -f https://raw.githubusercontent.com/aws-samples/amazon-cloudwatch-container-insights/latest/k8s-deployment-manifest-templates/deployment-mode/daemonset/container-insights-monitoring/cwagent/cwagent-serviceaccount.yaml
 $ kubectl apply -f eks_cloudwatch-agent/cwagent-configmap-tyoko.yaml
 $ kubectl apply -f https://raw.githubusercontent.com/aws-samples/amazon-cloudwatch-container-insights/latest/k8s-deployment-manifest-templates/deployment-mode/daemonset/container-insights-monitoring/cwagent/cwagent-daemonset.yaml 
 ```
 
-* Install 
+* Install FluentBit
+  * Ref : https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Container-Insights-setup-logs-FluentBit.html
+
+```
+# Install to seoul cluster 
+$ eksctl utils write-kubeconfig --region ap-northeast-2 --cluster eks-cicd-dr-primary-seoul
+$ ClusterName=eks-cicd-dr-secondary-seoul
+RegionName=ap-northeast-2
+FluentBitHttpPort='2020'
+FluentBitReadFromHead='Off'
+[[ ${FluentBitReadFromHead} = 'On' ]] && FluentBitReadFromTail='Off'|| FluentBitReadFromTail='On'
+[[ -z ${FluentBitHttpPort} ]] && FluentBitHttpServer='Off' || FluentBitHttpServer='On'
+kubectl create configmap fluent-bit-cluster-info \
+--from-literal=cluster.name=${ClusterName} \
+--from-literal=http.server=${FluentBitHttpServer} \
+--from-literal=http.port=${FluentBitHttpPort} \
+--from-literal=read.head=${FluentBitReadFromHead} \
+--from-literal=read.tail=${FluentBitReadFromTail} \
+--from-literal=logs.region=${RegionName} -n amazon-cloudwatch
+$ kubectl apply -f https://raw.githubusercontent.com/aws-samples/amazon-cloudwatch-container-insights/latest/k8s-deployment-manifest-templates/deployment-mode/daemonset/container-insights-monitoring/fluent-bit/fluent-bit.yaml
+
+# Install to tyoko cluster
+$ eksctl utils write-kubeconfig --region ap-northeast-1 --cluster eks-cicd-dr-secondary-tyoko
+$ ClusterName=eks-cicd-dr-secondary-tyoko
+RegionName=ap-northeast-1
+FluentBitHttpPort='2020'
+FluentBitReadFromHead='Off'
+[[ ${FluentBitReadFromHead} = 'On' ]] && FluentBitReadFromTail='Off'|| FluentBitReadFromTail='On'
+[[ -z ${FluentBitHttpPort} ]] && FluentBitHttpServer='Off' || FluentBitHttpServer='On'
+kubectl create configmap fluent-bit-cluster-info \
+--from-literal=cluster.name=${ClusterName} \
+--from-literal=http.server=${FluentBitHttpServer} \
+--from-literal=http.port=${FluentBitHttpPort} \
+--from-literal=read.head=${FluentBitReadFromHead} \
+--from-literal=read.tail=${FluentBitReadFromTail} \
+--from-literal=logs.region=${RegionName} -n amazon-cloudwatch
+$ kubectl apply -f https://raw.githubusercontent.com/aws-samples/amazon-cloudwatch-container-insights/latest/k8s-deployment-manifest-templates/deployment-mode/daemonset/container-insights-monitoring/fluent-bit/fluent-bit.yaml
+```
 
 * Install ArgoCD
 
