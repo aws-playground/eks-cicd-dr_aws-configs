@@ -145,9 +145,9 @@ $ eksctl create iamserviceaccount --cluster=eks-cicd-dr-secondary-tyoko --region
 $ helm repo add eks https://aws.github.io/eks-charts
 $ helm repo update
 $ eksctl utils write-kubeconfig --region ap-northeast-2 --cluster eks-cicd-dr-primary-seoul
-$ helm install aws-load-balancer-controller eks/aws-load-balancer-controller -n kube-system --set clusterName=eks-cicd-dr-primary-seoul --set serviceAccount.create=false --set serviceAccount.name=aws-load-balancer-controller --set nodeSelector."alpha\.eksctl\.io/nodegroup-name"=manage
+$ helm install aws-load-balancer-controller eks/aws-load-balancer-controller -n kube-system --set clusterName=eks-cicd-dr-primary-seoul --set serviceAccount.create=false --set serviceAccount.name=aws-load-balancer-controller --set nodeSelector."eks.\amazonaws\.com/nodegroup"=manage
 $ eksctl utils write-kubeconfig --region ap-northeast-1 --cluster eks-cicd-dr-secondary-tyoko
-$ helm install aws-load-balancer-controller eks/aws-load-balancer-controller -n kube-system --set clusterName=eks-cicd-dr-secondary-tyoko --set serviceAccount.create=false --set serviceAccount.name=aws-load-balancer-controller --set nodeSelector."alpha\.eksctl\.io/nodegroup-name"=manage
+$ helm install aws-load-balancer-controller eks/aws-load-balancer-controller -n kube-system --set clusterName=eks-cicd-dr-secondary-tyoko --set serviceAccount.create=false --set serviceAccount.name=aws-load-balancer-controller --set nodeSelector."eks\.amazonaws\.com/nodegroup"=manage
 ```
 
 * Install EFS CSI driver
@@ -166,9 +166,9 @@ $ eksctl create iamserviceaccount --cluster eks-cicd-dr-secondary-tyoko --namesp
 $ helm repo add aws-efs-csi-driver https://kubernetes-sigs.github.io/aws-efs-csi-driver/
 $ helm repo update
 $ eksctl utils write-kubeconfig --region ap-northeast-2 --cluster eks-cicd-dr-primary-seoul
-$ helm upgrade -i aws-efs-csi-driver aws-efs-csi-driver/aws-efs-csi-driver --namespace kube-system --set controller.serviceAccount.create=false --set controller.serviceAccount.name=efs-csi-controller-sa --set controller.nodeSelector."alpha\.eksctl\.io/nodegroup-name"=manage --set node.nodeSelector."alpha\.eksctl\.io/nodegroup-name"=app-server
+$ helm upgrade -i aws-efs-csi-driver aws-efs-csi-driver/aws-efs-csi-driver --namespace kube-system --set controller.serviceAccount.create=false --set controller.serviceAccount.name=efs-csi-controller-sa --set controller.nodeSelector."eks\.amazonaws\.com/nodegroup"=manage --set node.nodeSelector."eks\.amazonaws\.com/nodegroup"=app-server
 $ eksctl utils write-kubeconfig --region ap-northeast-1 --cluster eks-cicd-dr-secondary-tyoko
-$ helm upgrade -i aws-efs-csi-driver aws-efs-csi-driver/aws-efs-csi-driver --namespace kube-system --set controller.serviceAccount.create=false --set controller.serviceAccount.name=efs-csi-controller-sa --set controller.nodeSelector."alpha\.eksctl\.io/nodegroup-name"=manage --set node.nodeSelector."alpha\.eksctl\.io/nodegroup-name"=app-server
+$ helm upgrade -i aws-efs-csi-driver aws-efs-csi-driver/aws-efs-csi-driver --namespace kube-system --set controller.serviceAccount.create=false --set controller.serviceAccount.name=efs-csi-controller-sa --set controller.nodeSelector."eks\.amazonaws\.com/nodegroup"=manage --set node.nodeSelector."eks\.amazonaws\.com/nodegroup"=app-server
 
 # Create EFS PV
 $ eksctl utils write-kubeconfig --region ap-northeast-2 --cluster eks-cicd-dr-primary-seoul
