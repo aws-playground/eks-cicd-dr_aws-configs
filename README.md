@@ -252,7 +252,7 @@ $ kubectl apply -f https://raw.githubusercontent.com/aws-samples/amazon-cloudwat
 ```
 # Install to seoul cluster 
 $ eksctl utils write-kubeconfig --region ap-northeast-2 --cluster eks-cicd-dr-primary-seoul
-$ ClusterName=eks-cicd-dr-secondary-seoul
+$ ClusterName=eks-cicd-dr-primary-seoul
 RegionName=ap-northeast-2
 FluentBitHttpPort='2020'
 FluentBitReadFromHead='Off'
